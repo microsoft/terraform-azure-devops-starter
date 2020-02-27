@@ -1,0 +1,32 @@
+pr: none
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - 201-plan-apply-stages/
+
+variables:
+- group: terraform-secrets
+
+stages:
+- template: terraform-stages-template.yml
+  parameters:
+    environment: stage
+    environmentDisplayName: Staging
+    TerraformArguments: >-
+      -var department=Engineering
+    # For additional security, pass secret through environment instead of command line.
+    # Terraform recognizes TF_VAR prefixed environment variables.
+    TerraformEnvVariables:
+      TF_VAR_sql2password: $(SQL_PASSWORD)
+
+- template: terraform-stages-template.yml
+  parameters:
+    environment: qa
+    environmentDisplayName: QA
+    TerraformArguments: >-
+      -var department=QA
+    TerraformEnvVariables:
+      TF_VAR_sql2password: $(SQL_PASSWORD)

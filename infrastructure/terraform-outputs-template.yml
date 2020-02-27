@@ -1,0 +1,29 @@
+parameters:
+  TerraformDirectory:
+
+steps:
+- bash: |
+    set -eu
+
+    echo "Setting job variables from Terraform outputs:"
+    terraform output -json | jq -r '
+      . as $in
+      | keys[]
+      | ["- " + .]
+      | @tsv'
+
+    terraform output -json | jq -r '
+      . as $in
+      | keys[]
+      | ($in[.].value | tostring) as $value
+      | ($in[.].sensitive | tostring) as $sensitive
+      | [
+        "- " + . + ": " + if $in[.].sensitive then "(sensitive)" else $value end,  # output name to console
+        "##vso[task.setvariable variable=" + . + ";isSecret=" + $sensitive + "]" + $value,  # set as ADO task variable
+        "##vso[task.setvariable variable=" + . + ";isOutput=true;isSecret=" + $sensitive + "]" + $value  # also set as ADO job variable
+        ]
+      | .[]'
+
+  name: Outputs
+  displayName: Read Terraform outputs
+  workingDirectory: ${{ parameters.TerraformDirectory }}

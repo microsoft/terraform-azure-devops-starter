@@ -1,0 +1,22 @@
+pr: none
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - 101-terraform-job/
+
+variables:
+- group: terraform-secrets
+
+stages:
+
+- template: terraform-stages-template.yml
+  parameters:
+    environment: test
+    environmentDisplayName: Test
+    # Pass variables as environment variables.
+    # Terraform recognizes TF_VAR prefixed environment variables.
+    TerraformEnvVariables:
+      TF_VAR_department: engineering

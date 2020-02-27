@@ -1,0 +1,160 @@
+parameters:
+  environment: stage
+  environmentDisplayName: Staging
+  TerraformArguments: ''
+  TerraformEnvVariables:
+
+stages:
+- stage: Terraform_Plan_${{ parameters.environment }}
+  displayName: Plan ${{ parameters.environmentDisplayName }}
+  jobs:
+  - job: Terraform_Plan
+    displayName: Plan Terraform
+    # Avoid concurrent Terraform runs on PRs, which would result in failures due to exclusive lock on remote state file.
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), variables['RUN_FLAG_TERRAFORM']))
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+
+    - bash: |
+        cp terraform_backend/* terraform
+      displayName: Configure backend
+      workingDirectory: 201-plan-apply-stages
+
+    - template: ../infrastructure/terraform-init-template.yml
+      parameters:
+        provisionStorage: true
+        TerraformDirectory: 201-plan-apply-stages/terraform
+        environment: ${{ parameters.environment }}
+
+    # Using bash instead of Terraform extension because of following issues:
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/748
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/725
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/747
+    - bash: |
+        set -eu
+        export ARM_CLIENT_SECRET=$(ARM_CLIENT_SECRET)
+        terraform plan -input=false -out=tfplan -var environment=${{ parameters.environment }} ${{ parameters.TerraformArguments }}
+      displayName: Terraform plan
+      workingDirectory: 201-plan-apply-stages/terraform
+      env:
+        ${{ parameters.TerraformEnvVariables }}
+
+    - bash: |
+        # Save a human-friendly version of the plan with passwords hidden
+        terraform show -no-color tfplan > plan.txt
+        # Remove terraform plan from published artifacts, as it contains clear-text secrets
+        rm tfplan
+        # Resource providers can be > 100MB large, we don't want them in the published artifacts.
+        rm -r .terraform
+      displayName: Save plan text
+      workingDirectory: 201-plan-apply-stages/terraform
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish plan artifact
+      inputs:
+        targetPath: 201-plan-apply-stages/terraform
+        artifact: terraform_resources_${{ parameters.environment }}
+
+- stage: Terraform_Apply_${{ parameters.environment }}
+  displayName: Apply ${{ parameters.environmentDisplayName }}
+  jobs:
+  - deployment: Apply
+    environment: ${{ parameters.environmentDisplayName }}
+    displayName: Apply Terraform
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), variables['RUN_FLAG_TERRAFORM']))
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download plan
+            inputs:
+              artifactName: terraform_resources_${{ parameters.environment }}
+              targetPath: terraform_resources
+
+          - template: ../infrastructure/terraform-init-template.yml
+            parameters:
+              TerraformDirectory: terraform_resources
+              environment: ${{ parameters.environment }}
+
+          # As the Terraform extension plan task doesn't support -detailed-exitcode
+          # (to check if any changes are present), we define an equivalent bash
+          # task instead.
+          - bash: |
+              set -eu
+              export ARM_CLIENT_SECRET=$(ARM_CLIENT_SECRET)
+              # terraform plan -detailed-exitcode exit codes:
+              # 0 - Succeeded, diff is empty (no changes)
+              # 1 - Errored
+              # 2 - Succeeded, there is a diff
+              # >2 - unexpected, crash or bug
+              if terraform plan -detailed-exitcode -input=false -out=tfplan -var environment=${{ parameters.environment }} ${{ parameters.TerraformArguments }}; then
+                echo "Terraform succeeded with no changes"
+                # NB terraform apply should still be run, e.g. if new outputs have been created
+              else
+                terraform_exitcode=$?
+                if [ $terraform_exitcode -eq 2 ]; then
+                  echo "Terraform succeeded with updates"
+                else
+                  echo "ERROR: terraform exited with code $terraform_exitcode"
+                  exit 1
+                fi
+              fi
+            displayName: Terraform plan
+            workingDirectory: terraform_resources
+            env:
+              ${{ parameters.TerraformEnvVariables }}
+
+          - bash: |
+              set -eux  # ensure pipeline stops if terraform fails or diff reports a difference
+              terraform show -no-color tfplan > newplan.txt
+              diff -u plan.txt newplan.txt
+            workingDirectory: terraform_resources
+            displayName: Check unchanged plan
+
+          - bash: |
+              set -eu
+              terraform apply -input=false -auto-approve tfplan
+            displayName: Terraform apply
+            workingDirectory: terraform_resources
+            env:
+              ARM_CLIENT_SECRET: $(ARM_CLIENT_SECRET)
+
+  - job: ReadTerraform
+    dependsOn: Apply
+    condition: always()
+    displayName: Read outputs
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+
+    - bash: |
+        cp terraform_backend/* terraform
+      displayName: Configure backend
+      workingDirectory: 201-plan-apply-stages
+
+    - template: ../infrastructure/terraform-init-template.yml
+      parameters:
+        TerraformDirectory: 201-plan-apply-stages/terraform
+        environment: ${{ parameters.environment }}
+
+    - template: ../infrastructure/terraform-outputs-template.yml
+      parameters:
+        TerraformDirectory: 201-plan-apply-stages/terraform
+ 
+  - job: DummySampleJob
+    displayName: Use Terraform outputs
+    dependsOn: ReadTerraform
+    variables:
+      sqlserver1_host: $[ dependencies.ReadTerraform.outputs['Outputs.sqlserver1_host'] ]
+      sqlserver1_user: $[ dependencies.ReadTerraform.outputs['Outputs.sqlserver1_user'] ]
+      sqlserver1_password: $[ dependencies.ReadTerraform.outputs['Outputs.sqlserver1_password'] ]
+    steps:
+      - bash: |
+          # Dummy job showing how to consume Terraform outputs
+          echo DB_CONN_STRING="User ID=$(sqlserver1_user);Password=$(sqlserver1_password)"
+        displayName: Sample script

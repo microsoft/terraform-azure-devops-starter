@@ -1,0 +1,77 @@
+parameters:
+  environment: agents
+  TerraformArguments: ''
+  TerraformEnvVariables:
+
+stages:
+- stage: Terraform_${{ parameters.environment }}
+  displayName: Terraform ${{ parameters.environmentDisplayName }}
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+
+  - job: Terraform
+    displayName: Terraform
+    # Avoid concurrent Terraform runs on PRs, which would result in failures due to exclusive lock on remote state file.
+    condition: and(succeeded(), or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), variables['RUN_FLAG_TERRAFORM']))
+    steps:
+
+    - template: ../infrastructure/terraform-init-template.yml
+      parameters:
+        provisionStorage: true
+        TerraformDirectory: 301-deploy-agent-vms/terraform
+        environment: ${{ parameters.environment }}
+
+    # Using bash instead of Terraform extension because of following issues:
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/748
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/725
+    # - https://github.com/microsoft/azure-pipelines-extensions/issues/747
+    - bash: |
+        set -eu
+        export ARM_CLIENT_SECRET=$(ARM_CLIENT_SECRET)
+        terraform apply -input=false -auto-approve -var environment=${{ parameters.environment }} ${{ parameters.TerraformArguments }}
+      displayName: Terraform apply
+      workingDirectory: 301-deploy-agent-vms/terraform
+      env:
+        ${{ parameters.TerraformEnvVariables }}
+
+- stage: PostTerraform_${{ parameters.environment }}
+  displayName: PostTerraform ${{ parameters.environmentDisplayName }}
+  pool:
+    vmImage: ubuntu-latest
+  jobs:
+  - job: ReadTerraform
+    displayName: Read Terraform outputs
+    steps:
+
+    - template: ../infrastructure/terraform-init-template.yml
+      parameters:
+        TerraformDirectory: 301-deploy-agent-vms/terraform
+        environment: ${{ parameters.environment }}
+
+    - template: ../infrastructure/terraform-outputs-template.yml
+      parameters:
+        TerraformDirectory: 301-deploy-agent-vms/terraform
+
+    - bash: env
+
+    - task: AzureCLI@1
+      displayName: Start agents
+      inputs:
+        azureSubscription: Terraform
+        scriptLocation: inlineScript
+        inlineScript: |
+          set -eux  # fail on error
+          az vm start --ids $(echo $AGENT_VM_IDS | jq -r '.[]') -o none
+
+  - job: DummySampleJob
+    displayName: Run Agent job
+    dependsOn: ReadTerraform
+    variables:
+      pool_name: $[ dependencies.ReadTerraform.outputs['Outputs.pool_name'] ]
+    pool: $(pool_name)
+    steps:
+    - bash: |
+        echo This is running on agent
+        hostname
+      displayName: Sample script
