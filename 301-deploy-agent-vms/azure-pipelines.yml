@@ -1,0 +1,25 @@
+pr: none
+trigger:
+  branches:
+    include:
+    - master
+  paths:
+    include:
+    - 301-deploy-agent-vms/
+
+variables:
+- group: terraform-secrets
+
+stages:
+
+- template: terraform-stages-template.yml
+  parameters:
+    environment: dev
+    environmentDisplayName: Dev
+    # Pass variables as environment variables.
+    # Terraform recognizes TF_VAR prefixed environment variables.
+    TerraformEnvVariables:
+      TF_VAR_az_devops_url: $(System.TeamFoundationCollectionUri)
+      TF_VAR_az_devops_pat: $(AGENT_POOL_MANAGE_PAT_TOKEN)
+      TF_VAR_az_devops_agent_pool: starterpool
+      TF_VAR_az_devops_agent_vm_shutdown_time: 2300

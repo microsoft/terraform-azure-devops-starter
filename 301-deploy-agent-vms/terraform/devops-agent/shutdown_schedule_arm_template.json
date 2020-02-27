@@ -1,0 +1,40 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "shutdown_enabled": {
+      "type": "string"
+    },
+    "shutdown_time": {
+      "type": "string"
+    },
+    "vm_id": {
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "type": "microsoft.devtestlab/schedules",
+      "apiVersion": "2018-09-15",
+      "name": "[parameters('name')]",
+      "location": "northeurope",
+      "properties": {
+        "status": "[parameters('shutdown_enabled')]",
+        "taskType": "ComputeVmShutdownTask",
+        "dailyRecurrence": {
+          "time": "[parameters('shutdown_time')]"
+        },
+        "timeZoneId": "UTC",
+        "notificationSettings": {
+          "status": "Disabled",
+          "timeInMinutes": 30,
+          "notificationLocale": "en"
+        },
+        "targetResourceId": "[parameters('vm_id')]"
+      }
+    }
+  ]
+}
