@@ -58,20 +58,23 @@ allowing to manually review and approve infrastructure changes before they are d
 The next template shows how to use Terraform to deploy a pool of agent VMs on which to run
 subsequent jobs.
 
-![agent job](/docs/images/terraform_starter/301-agent-job.png)
-
 [301-deploy-agent-vms: Deploy hosted agent VMs](301-deploy-agent-vms)
+
+![agent job](/docs/images/terraform_starter/301-agent-job.png)
 
 # How to use the templates
 
 ## Variables and state management
 
-Variables can be injected using `-var key=value` syntax in the `TerraformArguments` parameter.
-The pipeline demonstrates this by adding a custom tag named `department` to the
+Variables can be injected using `TF_VAR_` syntax in the `TerraformEnvVariables` parameter or the
+`-var key=value` syntax in the `TerraformArguments` parameter.
+The pipelines demonstrates this by adding a custom tag named `department` to the
 created resource group, with distinct values in staging and QA.
 
 Rather than passing a Terraform plan between stages (which would contain clear-text secrets),
-the pipeline performs `terraform plan` again before applying changes and verifies that
+the pipeline in the
+[201-plan-apply-stages](201-plan-apply-stages) sample
+performs `terraform plan` again before applying changes and verifies that
 a textual representation of the plan (not including secrets values) is unchanged.
 
 The Terraform state is managed in a Azure Storage backend. Note that this backend contains
