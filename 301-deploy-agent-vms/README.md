@@ -4,12 +4,10 @@
 
 This template shows how to use Terraform to deploy a pool of agent VMs on which a subsequent job is run.
 
-![agent pool](/docs/images/terraform_starter/301-agent-pool.png)
+[![Watch the video](/docs/images/terraform_starter/301-video.png)](https://youtu.be/TdXmqqJE-gw)
 
 The Terraform definition does not contain any other resources.
 You can extend the definition with your custom infrastructure, such as Web Apps.
-
-<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/TdXmqqJE-gw" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ### Agent deployment scripts
 
