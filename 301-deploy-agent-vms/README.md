@@ -9,14 +9,17 @@ This template shows how to use Terraform to deploy a pool of agent VMs on which 
 The Terraform definition does not contain any other resources.
 You can extend the definition with your custom infrastructure, such as Web Apps.
 
+### Agent deployment scripts
+
+The template deploys agents at a high density, with (by default) 2 agent VMs with 4 Azure DevOps build agents per VM.
+This is efficient when running pipelines that do not require much local computing power, or only sporadically.
+
 ## Walkthrough
 
 ### Creating an agent pool
 
 In your Azure DevOps project settings, [create an Agent pool](https://docs.microsoft.com/en-us/azure/devops/pipelines/agents/pools-queues).
 Name the pool `starterpool` (if you want to use a different name, change the value in [azure-pipelines.yml](azure-pipelines.yml)).
-
-starterpool
 
 ### Creating a PAT token
 
@@ -26,7 +29,7 @@ Click on *Show all scopes* and grant the token *Read and Manage* permissions on 
 ![PAT token](/docs/images/terraform_starter/301-pat-token.png)
 
 Under Library, create a Variable Group named `terraform-secrets`. Create a secret
-named `AGENT_POOL_MANAGE_PAT_TOKEN` and paste the token value
+named `AGENT_POOL_MANAGE_PAT_TOKEN` and paste the token value.
 Make the variable secret using the padlock icon.
 
 ### Using the template
