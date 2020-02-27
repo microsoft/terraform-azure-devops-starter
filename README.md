@@ -2,7 +2,7 @@
 page_type: sample
 products:
 - devops
-description: "Started project for Azure Pipelines deploying resources on Terraform"
+description: "Starter project for Azure Pipelines deploying resources on Terraform"
 ---
 
 # Terraform starter project for Azure Pipelines
