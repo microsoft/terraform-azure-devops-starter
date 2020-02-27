@@ -25,8 +25,8 @@ This project can be used as a starter for Azure Pipelines deploying resources on
 |-------------------------|--------------------------------------------------------------|
 | `infrastructure`        | YAML pipeline templates shared across the samples.           |
 | `101-terraform-job`     | Sample YAML pipeline for a simple Terraform job.             |
-| `201-plan-apply-stages` | Sample YAML pipeline for a simple Terraform job.             |
-| `301-deploy-agent-vms`  | Sample YAML pipeline for a simple Terraform job.             |
+| `201-plan-apply-stages` | Sample YAML pipeline for manually approving plans.           |
+| `301-deploy-agent-vms`  | Sample YAML pipeline for deploying build agent VMs.          |
 | `docs`                  | Resources related to documentation.                          |
 | `CODE_OF_CONDUCT.md`    | Microsoft Open Source Code of Conduct.                       |
 | `LICENSE`               | The license for the sample.                                  |
