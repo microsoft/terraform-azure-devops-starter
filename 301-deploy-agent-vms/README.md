@@ -9,6 +9,8 @@ This template shows how to use Terraform to deploy a pool of agent VMs on which 
 The Terraform definition does not contain any other resources.
 You can extend the definition with your custom infrastructure, such as Web Apps.
 
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/TdXmqqJE-gw" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
 ### Agent deployment scripts
 
 The template deploys agents at a high density, with (by default) 2 agent VMs with 4 Azure DevOps build agents per VM.
