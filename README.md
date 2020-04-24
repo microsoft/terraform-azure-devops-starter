@@ -111,7 +111,7 @@ Allow all pipelines to use the connection.
 In `infrastructure/terraform-init-template.yml`, update the `TerraformBackendStorageAccount` name to a globally unique storage account name.
 The pipeline will create the storage account.
 
-Create a build pipeline referencing `infrastructure/azure-pipelines.yml`.
+Create a build pipeline referencing `101-terraform-job/azure-pipelines.yml`.
 
 ## Usage on non-master branch
 
