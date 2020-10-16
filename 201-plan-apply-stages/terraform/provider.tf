@@ -1,6 +1,6 @@
 #Set the terraform required version
 terraform {
-  required_version = ">= 0.12.6"
+  required_version = ">= 0.13.4"
 }
 
 # Configure the Azure Provider
